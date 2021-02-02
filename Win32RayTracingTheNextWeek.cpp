@@ -4,15 +4,17 @@
 #define global_variable static
 #define internal_function static
 
+
 global_variable bool Running;
+global_variable bool RunOnce = true;
 
-global_variable int Scale = 3;
-global_variable int BitmapWidth = 256;
-global_variable int BitmapHeight = 128;
+global_variable int BitmapScale = 3;
+global_variable int BitmapWidth = 256 * BitmapScale;
+global_variable int BitmapHeight = 128 * BitmapScale;
 
-
-global_variable int WindowWidth;
-global_variable int WindowHeight;
+global_variable int WindowScale = 1;
+global_variable int WindowWidth = BitmapWidth * WindowScale;
+global_variable int WindowHeight = BitmapHeight * WindowScale;
 
 global_variable BITMAPINFO BitmapInfo;
 global_variable void* BitmapMemory;
@@ -56,15 +58,15 @@ Win32ResizeDIBSection()
 }
 
 internal_function void
-Win32UpdateWindow(HDC DeviceContext, RECT* WindowRect, int X, int Y, int Width, int Height)
+Win32UpdateWindow(HDC DeviceContext, RECT* ClientRect)
 {
-	int WindowWidth = WindowRect->right - WindowRect->left;
-	int WindowHeight = WindowRect->bottom - WindowRect->top;
+	int WindowClientWidth = ClientRect->right - ClientRect->left;
+	int WindowClientHeight = ClientRect->bottom - ClientRect->top;
 
 	StretchDIBits(
 		DeviceContext,
-		0, 0, WindowWidth, WindowHeight, // Destination
-		0, 0, BitmapWidth, BitmapHeight, // Source
+		0, 0, WindowClientWidth, WindowClientHeight, // Destination
+		0, 0, BitmapWidth, BitmapHeight,			 // Source
 		BitmapMemory,
 		&BitmapInfo,
 		DIB_RGB_COLORS,
@@ -111,15 +113,11 @@ Win32MainWindowCallback(
 	{
 		PAINTSTRUCT Paint;
 		HDC DeviceContext = BeginPaint(Window, &Paint);
-		int X = Paint.rcPaint.left;
-		int Y = Paint.rcPaint.top;
-		int Width = Paint.rcPaint.right - Paint.rcPaint.left;
-		int Height = Paint.rcPaint.bottom - Paint.rcPaint.top;
 
 		RECT ClientRect;
 		GetClientRect(Window, &ClientRect);
 
-		Win32UpdateWindow(DeviceContext, &ClientRect, X, Y, Width, Height);
+		Win32UpdateWindow(DeviceContext, &ClientRect);
 		EndPaint(Window, &Paint);
 	} break;
 
@@ -144,22 +142,31 @@ int WINAPI WinMain(
 	WindowClass.style = CS_OWNDC | CS_VREDRAW | CS_HREDRAW;
 	WindowClass.lpfnWndProc = Win32MainWindowCallback;
 	WindowClass.hInstance = Instance;
-	//WindowClass.hIcon;
 	WindowClass.lpszClassName = "RTIOW_Class";
 
 
 
 	if (RegisterClass(&WindowClass))
 	{
+		RECT WindowRect = { 0, 0, (LONG)WindowWidth, (LONG)WindowHeight };
+
+		if (!AdjustWindowRectEx(&WindowRect, WS_OVERLAPPEDWINDOW | WS_VISIBLE, 0, 0))
+		{
+			OutputDebugStringA("Adjust Window Rect Fail.\n");
+		}
+
+		int WidthToCreateWindow = WindowRect.right - WindowRect.left;
+		int HeightToCreateWindow = WindowRect.bottom - WindowRect.top;
+
 		HWND WindowHandle = CreateWindowExA(
 			0,
 			WindowClass.lpszClassName,
 			"Ray Tracing In One Weekend",
-			WS_OVERLAPPEDWINDOW,
+			WS_OVERLAPPEDWINDOW | WS_VISIBLE,
 			CW_USEDEFAULT,		// X
 			CW_USEDEFAULT,		// Y
-			CW_USEDEFAULT,	// width
-			CW_USEDEFAULT,	// height
+			WidthToCreateWindow,	// width
+			HeightToCreateWindow,	// height
 			0,
 			0,
 			Instance,
