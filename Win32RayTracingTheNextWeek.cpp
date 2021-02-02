@@ -9,7 +9,7 @@ global_variable bool Running;
 global_variable bool RunOnce = true;
 
 global_variable int BitmapScale = 3;
-global_variable int BitmapWidth = 256 * BitmapScale;
+global_variable int BitmapWidth = 128 * BitmapScale;
 global_variable int BitmapHeight = 128 * BitmapScale;
 
 global_variable int WindowScale = 1;
@@ -45,9 +45,12 @@ Win32ResizeDIBSection()
 		unsigned int* Pixel = (unsigned int*)Row;
 		for (int X = 0; X < BitmapWidth; X++)
 		{
-			unsigned char ir = unsigned char(0);
-			unsigned char ig = unsigned char(128+Y);
-			unsigned char ib = unsigned char(X);
+			auto r = double(X) / (BitmapHeight - 1);
+			auto g = double(BitmapWidth - Y) / (BitmapWidth - 1);
+			auto b = 0.25;
+			unsigned char ir = static_cast<unsigned char>(255.999 * r);
+			unsigned char ig = static_cast<unsigned char>(255.999 * g);
+			unsigned char ib = static_cast<unsigned char>(255.999 * b);
 
 			// B G R 0, so reversed when bit or-ing: 0 R G B
 			*Pixel++ = (ir << 16) | (ig << 8) | ib;
@@ -142,7 +145,7 @@ int WINAPI WinMain(
 	WindowClass.style = CS_OWNDC | CS_VREDRAW | CS_HREDRAW;
 	WindowClass.lpfnWndProc = Win32MainWindowCallback;
 	WindowClass.hInstance = Instance;
-	WindowClass.lpszClassName = "RTIOW_Class";
+	WindowClass.lpszClassName = "RTTNW_Class";
 
 
 
@@ -178,7 +181,6 @@ int WINAPI WinMain(
 			// This need to be a part of code for some reason
 			ShowWindow(WindowHandle, ShowCode);
 
-			MSG Message;
 			Running = true;
 			while (Running)
 			{
